@@ -121,11 +121,14 @@ def make_reminder_loop(
 
         meme = get_random_meme(images_dir)
         content = f"{emoji} Time to {kind}, {mention}!"
-        try:
+       try:
             if meme and perms.attach_files:
                 await channel.send(content, file=discord.File(meme))
             else:
                 await channel.send(content)
+        except FileNotFoundError:
+            logging.warning("Image file missing – sending text only")
+            await channel.send(content)
         except discord.Forbidden:
             logging.warning("Forbidden in %s – stopping loop", channel)
             loop.stop()
