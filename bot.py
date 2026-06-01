@@ -6,7 +6,7 @@ import logging
 import asyncio
 import itertools
 from pathlib import Path
-from typing import Dict, Tuple, Optional, List
+from typing import Dict, Tuple, Optional
 
 import discord
 from discord import app_commands
@@ -43,7 +43,7 @@ hydrate_tasks: Dict[int, Tuple[tasks.Loop, int]] = {}
 stretch_tasks: Dict[int, Tuple[tasks.Loop, int]] = {}
 TASKS_LOCK = asyncio.Lock()
 PURGING = asyncio.Event()
-MEME_CACHE: Dict[str, List[str]] = {}
+
 
 status_list = [
     discord.Game("with water bottles 💧"),
@@ -65,12 +65,9 @@ async def on_ready():
 
 # ─────────── 3. Helpers
 def get_random_meme(folder: str) -> Optional[str]:
-    if folder not in MEME_CACHE:
-        path = Path(folder)
-        MEME_CACHE[folder] = [str(p) for p in path.iterdir() if p.is_file()] if path.is_dir() else []
-    files = MEME_CACHE[folder]
+    path = Path(folder)
+    files = [str(p) for p in path.iterdir() if p.is_file()] if path.is_dir() else []
     return random.choice(files) if files else None
-
 async def cancel_loop(loop: tasks.Loop) -> None:
     if not loop.is_running():
         return
@@ -121,11 +118,14 @@ def make_reminder_loop(
 
         meme = get_random_meme(images_dir)
         content = f"{emoji} Time to {kind}, {mention}!"
-        try:
+       try:
             if meme and perms.attach_files:
                 await channel.send(content, file=discord.File(meme))
             else:
                 await channel.send(content)
+        except FileNotFoundError:
+            logging.warning("Image file missing – sending text only")
+            await channel.send(content)
         except discord.Forbidden:
             logging.warning("Forbidden in %s – stopping loop", channel)
             loop.stop()
